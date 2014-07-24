@@ -1,0 +1,14 @@
+{application, yubi,
+ [
+   {description, "yubi"}
+  ,{vsn, "0.1.0"}
+  ,{registered, []}
+  ,{applications,
+    [kernel
+     ,stdlib
+     ,hackney
+    ]}
+  ,{env,
+    [{verification_url_base, <<"https://api2.yubico.com/wsapi/2.0/verify">>}
+    ]}
+ ]}.
