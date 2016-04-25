@@ -1,0 +1,6 @@
+[{<<"certifi">>,{pkg,<<"certifi">>,<<"0.4.0">>},1},
+ {<<"hackney">>,{pkg,<<"hackney">>,<<"1.6.0">>},0},
+ {<<"idna">>,{pkg,<<"idna">>,<<"1.2.0">>},1},
+ {<<"metrics">>,{pkg,<<"metrics">>,<<"1.0.1">>},1},
+ {<<"mimerl">>,{pkg,<<"mimerl">>,<<"1.0.2">>},1},
+ {<<"ssl_verify_fun">>,{pkg,<<"ssl_verify_fun">>,<<"1.1.0">>},1}].

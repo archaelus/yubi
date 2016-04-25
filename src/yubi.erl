@@ -15,16 +15,26 @@
 %% API
 %%====================================================================
 
-test_prompt() ->
-    {ok, [OTP]} = io:fread('OTP> ', "~s"),
+%%====================================================================
+%% Internal functions
+%%====================================================================
+
+switch_prompt() ->
+    os:cmd("osascript -e 'tell application \"yubiswitch\" to KeyOn'"),
+    OTP = otp_prompt(),
+    os:cmd("osascript -e 'tell application \"yubiswitch\" to KeyOff'"),
     OTP.
+
+otp_prompt() ->
+    {ok, [OTP]} = io:fread('OTP> ', "~s"),
+    iolist_to_binary(OTP).
 
 -spec validate(OTP::binary(), ClientId::iodata(), Secret::iodata()) -> any().
 validate(OTP, ClientId, Secret) ->
     Nonce = nonce(),
     URL = verify_url(verify_url_base(), OTP, ClientId, Nonce, Secret),
     case hackney:request(get, URL, [], <<>>, []) of
-        {ok, Code, Hdrs, Client} ->
+        {ok, Code, _Hdrs, Client} when 200 =< Code, Code =< 299  ->
             case hackney:body(Client) of
                 {ok, Bin} ->
                     Resp = parse_validate_response(Bin),
@@ -78,7 +88,7 @@ validate_response_nonce(Nonce, Resp) ->
 
 validate_response_otp(OTP, Resp) ->
     case proplists:get_value(<<"otp">>, Resp) of
-        Nonce -> valid;
+        OTP -> valid;
         Else ->
             {error, {invalid_otp, Else}}
     end.
@@ -86,6 +96,7 @@ validate_response_otp(OTP, Resp) ->
 validate_response_status(Resp) ->
     case proplists:get_value(<<"status">>, Resp) of
         <<"OK">> -> valid;
+        <<"REPLAYED_OTP">> -> {error, {invalid_status, replayed_otp}};
         Else ->
             {error, {invalid_status, Else}}
     end.
@@ -104,7 +115,6 @@ verify_url_base() ->
 nonce() ->
     << << (hd(erlang:integer_to_list(C, 16))):8 >>
        || << C:4 >> <= crypto:rand_bytes(20) >>.
-    %% base64:encode(crypto:rand_bytes(30)).
 
 -spec valid_modhex(Str::binary()) -> valid | invalid.
 valid_modhex(Str) when
@@ -135,6 +145,13 @@ verify_proplist(Otp, ClientId, Nonce) ->
                       {<<"nonce">>, iolist_to_binary(Nonce)},
                       {<<"otp">>, iolist_to_binary(Otp)}]).
 
-%%====================================================================
-%% Internal functions
-%%====================================================================
+
+read_api_key(File) ->
+    {ok, PL} = file:consult(File),
+    {proplists:get_value(client_id, PL),
+     base64:decode(proplists:get_value(secret_key, PL))}.
+
+write_api_key(CID, SK, File) ->
+    file:write_file(File, io_lib:format("~p.~n~p.~n",
+                                        [{client_id, CID},
+                                         {secret_key, base64:encode(SK)}])).
